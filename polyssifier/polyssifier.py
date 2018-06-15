@@ -241,6 +241,7 @@ def fit_clf(args, clf_name, val, n_fold, project_name, save, scoring):
     # Scores
     test_score = _scorer(clf, X, y)
     ypred = clf.predict(X)
+    yprob = None
     if hasattr(clf, 'predict_proba'):
         # For compatibility with different sklearn versions
         yprob = clf.predict_proba(X)

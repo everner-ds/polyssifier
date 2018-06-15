@@ -1,17 +1,36 @@
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import LinearSVC, SVC
+from sklearn.svm import LinearSVC, SVC, NuSVC
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import (RandomForestClassifier, AdaBoostClassifier,
+                              BaggingClassifier, GradientBoostingClassifier)
+
 from sklearn.linear_model import (LogisticRegression,
                                   LinearRegression,
-                                  BayesianRidge,
-                                  Ridge, Lasso,
+                                  BayesianRidge, Ridge,
+                                  RidgeClassifier, Lasso,
                                   ElasticNet, Lars, LassoLars,
                                   OrthogonalMatchingPursuit,
-                                  PassiveAggressiveRegressor)
-from sklearn.naive_bayes import GaussianNB
-from sklearn.neural_network import MLPClassifier as MLP
-from sklearn.gaussian_process import GaussianProcessRegressor
+                                  PassiveAggressiveRegressor,
+                                  PassiveAggressiveClassifier,
+                                  SGDClassifier, Perceptron,
+                                  ARDRegression, HuberRegressor,
+                                  RANSACRegressor, SGDRegressor,
+                                  TheilSenRegressor,
+                                  ElasticNetCV,  LarsCV, LassoCV,
+                                  LassoLarsCV, LogisticRegressionCV,
+                                  OrthogonalMatchingPursuitCV, RidgeCV,
+                                  RidgeClassifierCV)
+from sklearn.naive_bayes import (GaussianNB, MultinomialNB, BernoulliNB)
+from sklearn.neural_network import MLPClassifier, MLPRegressor, BernoulliRBM
+from sklearn.gaussian_process import (GaussianProcessRegressor,
+                                      GaussianProcessClassifier)
+from sklearn.neighbors import (KNeighborsClassifier, RadiusNeighborsClassifier,
+                               NearestCentroid, KNeighborsRegressor,
+                               RadiusNeighborsRegressor)
+
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+
 import collections
 import numpy as np
 from sklearn.feature_selection import SelectKBest, f_regression
@@ -97,18 +116,26 @@ def build_classifiers(exclude, scale, feature_selection, nCols):
     '''
     classifiers = collections.OrderedDict()
 
+    '''Neural Networks'''
     if 'Multilayer Perceptron' not in exclude:
         classifiers['Multilayer Perceptron'] = {
-            'clf': MLP(),
+            'clf': MLPClassifier(),
             'parameters': {'hidden_layer_sizes': [(100, 50), (50, 25)],
                            'max_iter': [500]}
         }
 
+    '''Neighbor Methods'''
     if 'Nearest Neighbors' not in exclude:
         classifiers['Nearest Neighbors'] = {
             'clf': KNeighborsClassifier(),
             'parameters': {'n_neighbors': [1, 5, 10, 20]}}
 
+    if 'Radius Neighbors' not in exclude:
+        classifiers['Radius Neighbors'] = {
+            'clf': RadiusNeighborsClassifier(outlier_label=0),
+            'parameters': {}}
+
+    '''SVM'''
     if 'SVM' not in exclude:
         classifiers['SVM'] = {
             'clf': SVC(C=1, probability=True, cache_size=10000,
@@ -122,6 +149,7 @@ def build_classifiers(exclude, scale, feature_selection, nCols):
             'parameters': {'C': [0.01, 0.1, 1],
                            'penalty': ['l1', 'l2']}}
 
+    '''Tree Methods'''
     if 'Decision Tree' not in exclude:
         classifiers['Decision Tree'] = {
             'clf': DecisionTreeClassifier(max_depth=None,
@@ -135,16 +163,77 @@ def build_classifiers(exclude, scale, feature_selection, nCols):
                                           max_features='auto'),
             'parameters': {'n_estimators': list(range(5, 20))}}
 
+    '''Ensemble Methods'''
+    if 'Ada Boost' not in exclude:
+        classifiers['Ada Boost'] = {
+            'clf': AdaBoostClassifier(),
+            'parameters': {}}
+
+    if 'Bagging' not in exclude:
+        classifiers['Ada Boost'] = {
+            'clf': BaggingClassifier(),
+            'parameters': {}}
+
+    if 'Gradient Boost' not in exclude:
+        classifiers['Gradient Boost'] = {
+            'clf': GradientBoostingClassifier(),
+            'parameters': {}}
+
+    ''' Linear Models '''
     if 'Logistic Regression' not in exclude:
         classifiers['Logistic Regression'] = {
             'clf': LogisticRegression(fit_intercept=True, solver='lbfgs',
                                       penalty='l2'),
             'parameters': {'C': [0.001, 0.1, 1]}}
 
-    if 'Naive Bayes' not in exclude:
-        classifiers['Naive Bayes'] = {
+    if 'Ridge Classification' not in exclude:
+        classifiers['Ridge Classification'] = {
+            'clf': RidgeClassifier(fit_intercept=True),
+            'parameters': {}}
+
+    if 'Ridge Classification CV' not in exclude:
+        classifiers['Ridge Classification CV'] = {
+            'clf': RidgeClassifierCV(fit_intercept=True),
+            'parameters': {}}
+
+    if 'Passive Aggressive' not in exclude:
+        classifiers['Passive Aggressive Classifier'] = {
+            'clf': PassiveAggressiveClassifier(),
+            'parameters': {}}
+
+    if 'Perceptron' not in exclude:
+        classifiers['Perceptron'] = {
+            'clf': Perceptron(),
+            'parameters': {}}
+
+    '''Naive Bayes'''
+    if 'Gaussian Naive Bayes' not in exclude:
+        classifiers['Gaussian Naive Bayes'] = {
             'clf': GaussianNB(),
             'parameters': {}}
+
+    if 'Bernoulli Naive Bayes' not in exclude:
+        classifiers['Bernoulli Naive Bayes'] = {
+            'clf': BernoulliNB(),
+            'parameters': {}}
+
+    '''Discriminant Analysis'''
+    if 'LDA' not in exclude:
+        classifiers['LDA'] = {
+            'clf': LinearDiscriminantAnalysis(),
+            'parameters': {}}
+
+    if 'QDA' not in exclude:
+        classifiers['QDA'] = {
+            'clf': QuadraticDiscriminantAnalysis(),
+            'parameters': {}}
+
+    if 'Gaussian Process' not in exclude:
+        classifiers['Guassian Process'] = {
+            'clf': GaussianProcessClassifier(),
+            'parameters': {}}
+
+
     # classifiers['Voting'] = {}
 
     def name(x):
@@ -256,6 +345,48 @@ def build_regressors(exclude, scale, feature_selection, nCols):
             'reg': ElasticNet(),
             'parameters': {'alpha': [0.25, 0.50, 0.75, 1.00],
                            'l1_ratio': [0.25, 0.50, 0.75, 1.00]}
+        }
+
+    if 'ARD Regression' not in exclude:
+        regressors['ARD Regression'] = {
+            'reg': ARDRegression(),
+            'parameters': {}  # Best to leave default parameters
+        }
+
+    if 'Huber Regression' not in exclude:
+        regressors['Huber Regression'] = {
+            'reg': HuberRegressor(),
+            'parameters': {}  # Best to leave default parameters
+        }
+
+    if 'RANSAC Regression' not in exclude:
+        regressors['RANSAC Regression'] = {
+            'reg': RANSACRegressor(),
+            'parameters': {}  # Best to leave default parameters
+        }
+
+    if 'SGD Regression' not in exclude:
+        regressors['SGD Regression'] = {
+            'reg': SGDRegressor(),
+            'parameters': {}  # Best to leave default parameters
+        }
+
+    if 'TheilSen Regression' not in exclude:
+        regressors['TheilSen Regression'] = {
+            'reg': TheilSenRegressor(),
+            'parameters': {}  # Best to leave default parameters
+        }
+
+    if 'MLP Regression' not in exclude:
+        regressors['MLP Regression'] = {
+            'reg': MLPRegressor(),
+            'parameters': {}  # Best to leave default parameters
+        }
+
+    if 'KNN Regression' not in exclude:
+        regressors['KNN Regression'] = {
+            'reg': KNeighborsRegressor(),
+            'parameters': {}  # Best to leave default parameters
         }
 
     def name(x):
