@@ -23,13 +23,14 @@ sys.setrecursionlimit(10000)
 logger = make_logger('polyssifier')
 
 
-def poly(data, label, n_folds=10, scale=True, exclude=[],
+def poly(data, label, features=None, n_folds=10, scale=True, exclude=[],
          feature_selection=False, save=False, scoring='auc',
          project_name='', concurrency=1, verbose=True):
     '''
     Input
     data         = numpy matrix with as many rows as samples
     label        = numpy vector that labels each data row
+    features     = feature names (autopopulated if data is DataFrame)
     n_folds      = number of folds to run
     scale        = whether to scale data or not
     exclude      = list of classifiers to exclude from the analysis
@@ -46,7 +47,7 @@ def poly(data, label, n_folds=10, scale=True, exclude=[],
     '''
 
     assert label.shape[0] == data.shape[0],\
-        "Label dimesions do not match data number of rows"
+        "Label dimensions do not match data number of rows"
     _le = LabelEncoder()
     _le.fit(label)
     label = _le.transform(label)
@@ -76,6 +77,11 @@ def poly(data, label, n_folds=10, scale=True, exclude=[],
     coefficients = {}
     # !fitted_clfs =
     # pd.DataFrame(columns=classifiers.keys(), index = range(n_folds))
+
+    # If input data is a Dataframe, get feature names from columns
+    if features is None:
+        if isinstance(data, pd.DataFrame):
+            features = data.columns.tolist()
 
     logger.info('Initialization, done.')
 
@@ -158,10 +164,15 @@ def poly(data, label, n_folds=10, scale=True, exclude=[],
     if verbose:
         print(scores.astype('float').describe().transpose()
               [['mean', 'std', 'min', 'max']])
-    return Report(scores=scores, confusions=confusions,
-                  predictions=predictions, test_prob=test_prob,
-                  coefficients=coefficients,
-                  feature_selection=feature_selection)
+    return Report(
+        scores=scores,
+        confusions=confusions,
+        predictions=predictions,
+        test_prob=test_prob,
+        coefficients=coefficients,
+        feature_selection=feature_selection,
+        features=features
+    )
 
 
 def _scorer(clf, X, y):

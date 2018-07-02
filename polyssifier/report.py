@@ -14,7 +14,7 @@ class Report(object):
 
     def __init__(self, scores, confusions, predictions,
                  test_prob, coefficients, feature_selection,
-                 scoring='auc'):
+                 scoring='auc', features=None):
         self.scores = scores
         self.confusions = confusions
         self.predictions = predictions
@@ -22,19 +22,22 @@ class Report(object):
         self.coefficients = coefficients
         self.scoring = scoring
         self._feature_selection = feature_selection
+        self.features = features
 
     def plot_scores(self, path='temp'):
         plot_scores(self.scores, self.scoring, path)
 
-    def plot_features(self, ntop=3, path='temp',
-                      coef_names=None):
+    def plot_features(self, ntop=3, path='temp'):
         if self._feature_selection:
             log.warning(
                 'Feature importance not implemented for feature_selection=True, try setting False')
         else:
-            plot_features(coefs=self.coefficients,
-                          coef_names=coef_names,
-                          ntop=ntop, file_name=path)
+            plot_features(
+                coefs=self.coefficients,
+                coef_names=self.features,
+                ntop=ntop,
+                file_name=path,
+            )
 
 
 def plot_features(coefs, coef_names=None,
@@ -45,15 +48,16 @@ def plot_features(coefs, coef_names=None,
 
     n_coefs = fs[list(fs.keys())[0]].shape[-1]
     if coef_names is None:
-        coef_names = np.array([str(c + 1) for c in range(n_coefs)])
+        _coef_names = np.array([str(c + 1) for c in range(n_coefs)])
     else:
-        coef_names = np.array(coef_names)
+        _coef_names = np.array(coef_names)
 
     for key, val in fs.items():
 
         figure_path = file_name + '_' + key + '_feature_ranking.png'
         log.info('Plotting %s coefs to %s', key, figure_path)
         plt.figure(figsize=(10, 10))
+
         # plotting coefficients weights
         mean = np.mean(val, axis=0)
         std = np.std(val, axis=0)
@@ -61,10 +65,13 @@ def plot_features(coefs, coef_names=None,
         topm = mean[idx][-ntop:][::-1]
         tops = std[idx][-ntop:][::-1]
         plt.subplot(211)
-        plt.bar(range(ntop), topm, yerr=tops,
-                tick_label=(coef_names[idx][-ntop:][::-1]))
+        x = range(ntop)
+        plt.bar(x, topm, yerr=tops,
+                tick_label=(_coef_names[idx][-ntop:][::-1]))
         plt.title('{}: Feature importance'.format(key))
         plt.xlabel('Feature index')
+        if coef_names is not None:
+            plt.xticks(x, _coef_names, rotation='vertical')
 
         # plotting coefficients rank
         rank = n_coefs - np.apply_along_axis(
@@ -77,7 +84,7 @@ def plot_features(coefs, coef_names=None,
 
         plt.subplot(212)
         plt.bar(range(ntop), topm, yerr=tops,
-                tick_label=coef_names[idx][:ntop])
+                tick_label=_coef_names[idx][:ntop])
         plt.title('{}: Feature rank'.format(key))
         plt.xlabel('Feature index')
         plt.grid(axis='y')

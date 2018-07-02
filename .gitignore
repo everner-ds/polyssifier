@@ -58,3 +58,6 @@ target/
 # figures
 *.pdf
 *.svg
+
+# PyCharm files
+.idea

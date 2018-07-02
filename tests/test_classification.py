@@ -1,7 +1,10 @@
+import os
 import pytest
 import warnings
 import sys
-sys.path.append('../')
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+import matplotlib
+matplotlib.use('TkAgg')
 from polyssifier import poly
 from sklearn.datasets import make_classification
 
