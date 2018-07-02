@@ -23,16 +23,16 @@ sys.setrecursionlimit(10000)
 logger = make_logger('polyssifier')
 
 
-def poly(data, label, features=None, n_folds=10, scale=True, exclude=[],
+def poly(data, label, feature_names=None, n_folds=10, scale=True, exclude=[],
          feature_selection=False, save=False, scoring='auc',
          project_name='', concurrency=1, verbose=True):
     '''
     Input
-    data         = numpy matrix with as many rows as samples
-    label        = numpy vector that labels each data row
-    features     = feature names (autopopulated if data is DataFrame)
+    data         = numpy matrix (or pandas DataFrame) with as many rows as samples
+    label        = numpy vector that labels each data_ row
+    feature_names = feature names (autopopulated if data_ is DataFrame)
     n_folds      = number of folds to run
-    scale        = whether to scale data or not
+    scale        = whether to scale data_ or not
     exclude      = list of classifiers to exclude from the analysis
     feature_selection = whether to use feature selection or not (anova)
     save         = whether to save intermediate steps or not
@@ -40,14 +40,26 @@ def poly(data, label, features=None, n_folds=10, scale=True, exclude=[],
     project_name = prefix used to save the intermediate steps
     concurrency  = number of parallel jobs to run
     verbose      = whether to print or not results
-    Ouput
+    Output
     scores       = matrix with scores for each fold and classifier
     confusions   = confussion matrix for each classifier
     predictions  = Cross validated predicitons for each classifier
     '''
 
-    assert label.shape[0] == data.shape[0],\
-        "Label dimensions do not match data number of rows"
+
+    # If input data_ is a Dataframe, get feature names from columns
+    if feature_names is None:
+        if isinstance(data, pd.DataFrame):
+            feature_names = data.columns.tolist()
+
+    # Convert from pandas DataFrame
+    if isinstance(data, pd.DataFrame):
+        data_ = data.values
+    else:
+        data_ = data
+
+    assert label.shape[0] == data_.shape[0],\
+        "Label dimensions do not match data_ number of rows"
     _le = LabelEncoder()
     _le.fit(label)
     label = _le.transform(label)
@@ -64,30 +76,25 @@ def poly(data, label, features=None, n_folds=10, scale=True, exclude=[],
     logger.info('Building classifiers ...')
     classifiers = build_classifiers(exclude, scale,
                                     feature_selection,
-                                    data.shape[1])
+                                    data_.shape[1])
 
     scores = pd.DataFrame(columns=pd.MultiIndex.from_product(
         [classifiers.keys(), ['train', 'test']]),
         index=range(n_folds))
     predictions = pd.DataFrame(columns=classifiers.keys(),
-                               index=range(data.shape[0]))
+                               index=range(data_.shape[0]))
     test_prob = pd.DataFrame(columns=classifiers.keys(),
-                             index=range(data.shape[0]))
+                             index=range(data_.shape[0]))
     confusions = {}
     coefficients = {}
     # !fitted_clfs =
     # pd.DataFrame(columns=classifiers.keys(), index = range(n_folds))
 
-    # If input data is a Dataframe, get feature names from columns
-    if features is None:
-        if isinstance(data, pd.DataFrame):
-            features = data.columns.tolist()
-
     logger.info('Initialization, done.')
 
     skf = StratifiedKFold(n_splits=n_folds, random_state=1988, shuffle=True)
-    skf.get_n_splits(np.zeros(data.shape[0]), label)
-    kf = list(skf.split(np.zeros(data.shape[0]), label))
+    skf.get_n_splits(np.zeros(data_.shape[0]), label)
+    kf = list(skf.split(np.zeros(data_.shape[0]), label))
 
     # Parallel processing of tasks
     manager = Manager()
@@ -95,7 +102,7 @@ def poly(data, label, features=None, n_folds=10, scale=True, exclude=[],
     args.append({})  # Store inputs
     shared = args[0]
     shared['kf'] = kf
-    shared['X'] = data
+    shared['X'] = data_
     shared['y'] = label
     args[0] = shared
 
@@ -118,8 +125,8 @@ def poly(data, label, features=None, n_folds=10, scale=True, exclude=[],
     for clf_name in classifiers:
         coefficients[clf_name] = []
         temp = np.zeros((n_class, n_class))
-        temp_pred = np.zeros((data.shape[0], ))
-        temp_prob = np.zeros((data.shape[0], ))
+        temp_pred = np.zeros((data_.shape[0],))
+        temp_prob = np.zeros((data_.shape[0],))
         clfs = fitted_clfs[clf_name]
         for n in range(n_folds):
             train_score, test_score, prediction, prob, confusion,\
@@ -141,12 +148,12 @@ def poly(data, label, features=None, n_folds=10, scale=True, exclude=[],
     scores['Voting', 'train'] = np.zeros((n_folds, ))
     scores['Voting', 'test'] = np.zeros((n_folds, ))
     temp = np.zeros((n_class, n_class))
-    temp_pred = np.zeros((data.shape[0], ))
+    temp_pred = np.zeros((data_.shape[0],))
     for n, (train, test) in enumerate(kf):
         clf = MyVoter(fitted_clfs.loc[n].values)
-        X, y = data[train, :], label[train]
+        X, y = data_[train, :], label[train]
         scores.loc[n, ('Voting', 'train')] = _scorer(clf, X, y)
-        X, y = data[test, :], label[test]
+        X, y = data_[test, :], label[test]
         scores.loc[n, ('Voting', 'test')] = _scorer(clf, X, y)
         temp_pred[test] = clf.predict(X)
         temp += confusion_matrix(y, temp_pred[test])
@@ -171,7 +178,7 @@ def poly(data, label, features=None, n_folds=10, scale=True, exclude=[],
         test_prob=test_prob,
         coefficients=coefficients,
         feature_selection=feature_selection,
-        features=features
+        feature_names=feature_names
     )
 
 

@@ -14,7 +14,7 @@ class Report(object):
 
     def __init__(self, scores, confusions, predictions,
                  test_prob, coefficients, feature_selection,
-                 scoring='auc', features=None):
+                 scoring='auc', feature_names=None):
         self.scores = scores
         self.confusions = confusions
         self.predictions = predictions
@@ -22,7 +22,7 @@ class Report(object):
         self.coefficients = coefficients
         self.scoring = scoring
         self._feature_selection = feature_selection
-        self.features = features
+        self.feature_names = feature_names
 
     def plot_scores(self, path='temp'):
         plot_scores(self.scores, self.scoring, path)
@@ -34,7 +34,7 @@ class Report(object):
         else:
             plot_features(
                 coefs=self.coefficients,
-                coef_names=self.features,
+                coef_names=self.feature_names,
                 ntop=ntop,
                 file_name=path,
             )
@@ -42,6 +42,8 @@ class Report(object):
 
 def plot_features(coefs, coef_names=None,
                   ntop=3, file_name='temp'):
+
+
     fs = {key: np.array(val).squeeze()
           for key, val in coefs.items()
           if val[0] is not None}
@@ -70,7 +72,8 @@ def plot_features(coefs, coef_names=None,
                 tick_label=(_coef_names[idx][-ntop:][::-1]))
         plt.title('{}: Feature importance'.format(key))
         plt.xlabel('Feature index')
-        if coef_names is not None:
+
+        if (ntop > 4) and (coef_names is not None):
             plt.xticks(x, _coef_names, rotation='vertical')
 
         # plotting coefficients rank
@@ -87,6 +90,9 @@ def plot_features(coefs, coef_names=None,
                 tick_label=_coef_names[idx][:ntop])
         plt.title('{}: Feature rank'.format(key))
         plt.xlabel('Feature index')
+        if (ntop > 4) and (coef_names is not None):
+            plt.xticks(x, _coef_names, rotation='vertical')
+
         plt.grid(axis='y')
         plt.tight_layout()
         plt.savefig(figure_path)
